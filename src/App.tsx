@@ -9,10 +9,14 @@ const NO_URLS: string[] = []
 function App() {
   const [state, dispatch] = useReducer(tournamentReducer, initialState)
 
-  // Every image URL the app still holds; anything that drops out is revoked.
+  // Every image URL the app still holds (originals and previews); anything
+  // that drops out is revoked.
   const contestants = state.phase === 'chooseSize' ? null : state.contestants
   const urls = useMemo(
-    () => (contestants ? contestants.map((c) => c.url) : NO_URLS),
+    () =>
+      contestants
+        ? contestants.flatMap((c) => [c.url, c.previewUrl])
+        : NO_URLS,
     [contestants],
   )
   useObjectUrlCleanup(urls)

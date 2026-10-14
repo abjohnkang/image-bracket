@@ -39,8 +39,13 @@
   color: var(--color-text);
 }
 
-.secondary:hover {
+.secondary:hover:not(:disabled) {
   border-color: var(--color-accent);
+}
+
+.secondary:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
 }
 
 .primary {

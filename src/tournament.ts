@@ -3,7 +3,8 @@ export type TournamentSize = (typeof TOURNAMENT_SIZES)[number]
 
 export interface Contestant {
   id: string
-  url: string
+  url: string // the untouched original, for matches and the winner screen
+  previewUrl: string // small generated preview, for the setup grid only
 }
 
 export type AppState =

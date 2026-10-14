@@ -3,11 +3,12 @@ import BracketMark from '../components/BracketMark'
 import Button from '../components/Button'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { createContestantId } from '../contestantId'
+import { prepareImage, releasePreparedImage } from '../preview'
 import type { Contestant, TournamentSize } from '../tournament'
 import {
   ACCEPT_ATTRIBUTE,
-  NO_SKIPS,
   describeUpload,
+  processBatch,
   sortFiles,
   type UploadResult,
 } from '../upload'
@@ -30,8 +31,14 @@ function SetupScreen({
   onStart,
   onBackToSizes,
 }: SetupScreenProps) {
-  // The latest upload batch, kept until dismissed or replaced.
+  // The latest upload batch, kept until dismissed or replaced. The notice
+  // text is derived from it plus the current bracket state.
   const [upload, setUpload] = useState<UploadResult | null>(null)
+  // Progress of the batch being prepared, or null when idle.
+  const [preparing, setPreparing] = useState<{
+    done: number
+    total: number
+  } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
@@ -39,42 +46,59 @@ function SetupScreen({
   const browseRef = useRef<HTMLButtonElement>(null)
   const gridRef = useRef<HTMLUListElement>(null)
   const focusAfterRemove = useRef<number | null>(null)
+  // Set while a batch runs; aborting it stops the batch and releases any
+  // previews it has made but not added.
+  const batchRef = useRef<AbortController | null>(null)
 
   const count = contestants.length
   const isFull = count === size
-  const notice = upload && describeUpload(upload)
+  const isPreparing = preparing !== null
+  const notice = upload && describeUpload(upload, { bracketFull: isFull })
 
-  function handleFiles(files: File[]) {
+  // One batch at a time: sort the files, then decode and preview the
+  // supported ones (two at a time), adding each contestant in file order.
+  async function handleFiles(files: File[]) {
     if (files.length === 0) return // e.g. the file picker was cancelled
+    if (batchRef.current) return // a batch is already being prepared
 
-    const { accepted, skipped } = sortFiles(files, size - count)
-    if (accepted.length > 0) {
-      onAddContestants(
-        accepted.map((file) => ({
-          id: createContestantId(),
-          url: URL.createObjectURL(file),
-        })),
-      )
-    }
-    setUpload({ added: accepted.length, skipped })
-  }
+    const { candidates, heic, unsupported } = sortFiles(files)
+    const freeSlots = size - count
+    const total = Math.min(candidates.length, freeSlots)
+    const controller = new AbortController()
+    batchRef.current = controller
+    setUpload(null)
+    if (total > 0) setPreparing({ done: 0, total })
 
-  // An accepted file that cannot be displayed is removed (which frees its
-  // slot and, through App's cleanup, its URL) and counted in the notice.
-  function handlePreviewError(id: string) {
-    if (!contestants.some((c) => c.id === id)) return
-    onRemove(id)
-    setUpload((previous) => {
-      const skipped = previous?.skipped ?? NO_SKIPS
-      return {
-        added:
-          previous && previous.added !== null
-            ? Math.max(0, previous.added - 1)
-            : null,
-        skipped: { ...skipped, unreadable: skipped.unreadable + 1 },
-      }
+    const counts = await processBatch({
+      files: candidates,
+      freeSlots,
+      prepare: prepareImage,
+      commit: (image) => {
+        onAddContestants([{ id: createContestantId(), ...image }])
+        setPreparing((progress) =>
+          progress && { ...progress, done: progress.done + 1 },
+        )
+      },
+      discard: releasePreparedImage,
+      signal: controller.signal,
+    })
+
+    if (controller.signal.aborted) return // the screen closed mid-batch
+    batchRef.current = null
+    setPreparing(null)
+    setUpload({
+      added: counts.added,
+      skipped: {
+        extra: counts.extra,
+        heic,
+        unsupported,
+        unreadable: counts.unreadable,
+      },
     })
   }
+
+  // Leaving setup (Change size, Start) cancels any batch still running.
+  useEffect(() => () => batchRef.current?.abort(), [])
 
   function handleRemove(index: number, id: string) {
     focusAfterRemove.current = index
@@ -100,9 +124,9 @@ function SetupScreen({
 
   // The whole window accepts file drops while this screen is shown.
   const onDropFiles = useEffectEvent((files: File[]) => {
-    if (!isConfirmOpen) handleFiles(files)
+    if (!isConfirmOpen && !isPreparing) void handleFiles(files)
   })
-  const canShowOverlay = useEffectEvent(() => !isConfirmOpen)
+  const canShowOverlay = useEffectEvent(() => !isConfirmOpen && !isPreparing)
 
   useEffect(() => {
     let depth = 0 // dragenter/leave fire for every child element
@@ -175,7 +199,11 @@ function SetupScreen({
             <h2 className={styles.dropzoneTitle} id="dropzone-title">
               Drop images here
             </h2>
-            <Button ref={browseRef} onClick={openFilePicker}>
+            <Button
+              ref={browseRef}
+              disabled={isPreparing}
+              onClick={openFilePicker}
+            >
               Browse files
             </Button>
             <p className={styles.dropzoneHint}>
@@ -187,10 +215,9 @@ function SetupScreen({
             {contestants.map((contestant, index) => (
               <li key={contestant.id} className={styles.tile}>
                 <img
-                  src={contestant.url}
+                  src={contestant.previewUrl}
                   alt={`Image ${index + 1}`}
                   decoding="async"
-                  onError={() => handlePreviewError(contestant.id)}
                 />
                 <button
                   type="button"
@@ -245,7 +272,11 @@ function SetupScreen({
                 <span className={styles.count}>
                   {count} / {size}
                 </span>
-                {isFull ? (
+                {preparing ? (
+                  <span className={styles.remaining}>
+                    Preparing {preparing.done} of {preparing.total}…
+                  </span>
+                ) : isFull ? (
                   <span className={styles.ready}>
                     <CheckIcon />
                     Ready
@@ -258,12 +289,16 @@ function SetupScreen({
               </p>
               <div className={styles.actions}>
                 {count > 0 && !isFull && (
-                  <Button onClick={openFilePicker}>
+                  <Button disabled={isPreparing} onClick={openFilePicker}>
                     <PlusIcon />
                     Add images
                   </Button>
                 )}
-                <Button variant="primary" disabled={!isFull} onClick={onStart}>
+                <Button
+                  variant="primary"
+                  disabled={!isFull || isPreparing}
+                  onClick={onStart}
+                >
                   Start Tournament
                 </Button>
               </div>
@@ -285,7 +320,7 @@ function SetupScreen({
         onChange={(event) => {
           const files = Array.from(event.target.files ?? [])
           event.target.value = '' // so the same file can be picked again
-          handleFiles(files)
+          void handleFiles(files)
         }}
       />
 

@@ -24,10 +24,10 @@ const HEIC_TYPES = [
 const HEIC_EXTENSIONS = ['.heic', '.heif']
 
 export interface SkippedCounts {
-  extra: number // supported, but the bracket was already full
+  extra: number // supported, but not needed to fill the bracket
   heic: number
   unsupported: number
-  unreadable: number // accepted, but the preview failed to load
+  unreadable: number // supported, but could not be decoded
 }
 
 export const NO_SKIPS: SkippedCounts = {
@@ -38,13 +38,15 @@ export const NO_SKIPS: SkippedCounts = {
 }
 
 export interface SortedFiles {
-  accepted: File[]
-  skipped: SkippedCounts
+  candidates: File[] // supported files, in their original order
+  heic: number
+  unsupported: number
 }
 
-// `added` is null when the notice is not about a specific upload batch.
+// The structured result of one upload batch. The notice text is derived from
+// this plus the current bracket state, so it never goes stale.
 export interface UploadResult {
-  added: number | null
+  added: number
   skipped: SkippedCounts
 }
 
@@ -77,21 +79,126 @@ function classifyFile(file: File): FileKind {
   return ACCEPTED_EXTENSIONS.includes(extension) ? 'supported' : 'unsupported'
 }
 
-// Splits one upload batch into the files to add (in their original order, up
-// to the free slots) and counts of everything skipped.
-export function sortFiles(files: readonly File[], freeSlots: number): SortedFiles {
-  const accepted: File[] = []
-  const skipped = { ...NO_SKIPS }
-
+// Splits one upload batch into supported candidates (in their original order)
+// and counts of HEIC and unsupported files. Slots are handled by processBatch,
+// because a candidate that fails to decode frees its slot for the next one.
+export function sortFiles(files: readonly File[]): SortedFiles {
+  const sorted: SortedFiles = { candidates: [], heic: 0, unsupported: 0 }
   for (const file of files) {
     const kind = classifyFile(file)
-    if (kind === 'heic') skipped.heic++
-    else if (kind === 'unsupported') skipped.unsupported++
-    else if (accepted.length < freeSlots) accepted.push(file)
-    else skipped.extra++
+    if (kind === 'heic') sorted.heic++
+    else if (kind === 'unsupported') sorted.unsupported++
+    else sorted.candidates.push(file)
   }
+  return sorted
+}
 
-  return { accepted, skipped }
+export interface BatchOptions<T> {
+  files: readonly File[]
+  freeSlots: number
+  prepare: (file: File) => Promise<T> // rejects if the file can't be decoded
+  commit: (item: T) => void // called in original file order
+  discard: (item: T) => void // releases a prepared item that won't be used
+  signal?: AbortSignal
+  concurrency?: number
+}
+
+export interface BatchCounts {
+  added: number
+  extra: number // never prepared: the bracket was already covered
+  unreadable: number
+}
+
+// Prepares files with limited concurrency and commits the successful ones in
+// their original order. A file is only started while it could still be needed
+// (committed + waiting + in flight < free slots), so extras are never decoded
+// and a failure lets the next file take its place. After an abort nothing is
+// committed and every prepared item is discarded.
+export function processBatch<T>({
+  files,
+  freeSlots,
+  prepare,
+  commit,
+  discard,
+  signal,
+  concurrency = 2,
+}: BatchOptions<T>): Promise<BatchCounts> {
+  const slots = Math.max(0, freeSlots)
+
+  return new Promise((resolve) => {
+    // Finished but not yet committed, by file index; null means it failed.
+    const settled = new Map<number, { item: T } | null>()
+    let started = 0
+    let inFlight = 0
+    let nextToCommit = 0
+    let added = 0
+    let unreadable = 0
+    let finished = false
+
+    const isAborted = () => signal?.aborted === true
+    const waiting = () =>
+      [...settled.values()].filter((result) => result !== null).length
+    const canStart = () =>
+      started < files.length && added + waiting() + inFlight < slots
+
+    function commitInOrder() {
+      while (settled.has(nextToCommit)) {
+        const result = settled.get(nextToCommit)
+        settled.delete(nextToCommit)
+        nextToCommit++
+        if (result) {
+          commit(result.item)
+          added++
+        } else {
+          unreadable++
+        }
+      }
+    }
+
+    function finishIfDone() {
+      if (finished || inFlight > 0) return
+      if (!isAborted() && canStart()) return
+      finished = true
+      signal?.removeEventListener('abort', handleAbort)
+      resolve({ added, extra: files.length - started, unreadable })
+    }
+
+    function settle(index: number, result: { item: T } | null) {
+      inFlight--
+      if (isAborted()) {
+        if (result) discard(result.item)
+      } else {
+        settled.set(index, result)
+        commitInOrder()
+      }
+      startMore()
+    }
+
+    function startMore() {
+      while (!isAborted() && inFlight < concurrency && canStart()) {
+        const index = started++
+        inFlight++
+        Promise.resolve()
+          .then(() => prepare(files[index]))
+          .then(
+            (item) => settle(index, { item }),
+            () => settle(index, null),
+          )
+      }
+      finishIfDone()
+    }
+
+    function handleAbort() {
+      for (const result of settled.values()) {
+        if (result) discard(result.item)
+      }
+      settled.clear()
+      finishIfDone()
+    }
+
+    signal?.addEventListener('abort', handleAbort)
+    startMore()
+  })
 }
 
 function plural(count: number, one: string, many: string): string {
@@ -104,10 +211,11 @@ function joinList(items: string[]): string {
 }
 
 // Builds the short upload notice, or null when nothing was skipped.
-export function describeUpload({
-  added,
-  skipped,
-}: UploadResult): UploadNotice | null {
+// `bracketFull` is the bracket's state now, not when the batch ran.
+export function describeUpload(
+  { added, skipped }: UploadResult,
+  { bracketFull }: { bracketFull: boolean },
+): UploadNotice | null {
   const { extra, heic, unsupported, unreadable } = skipped
   const total = extra + heic + unsupported + unreadable
   if (total === 0) return null
@@ -148,14 +256,12 @@ export function describeUpload({
         )}.`
 
   const addedText =
-    added === null
-      ? ''
-      : added > 0
-        ? `Added ${plural(added, 'image', 'images')}. `
-        : 'No images added. '
+    added > 0
+      ? `Added ${plural(added, 'image', 'images')}. `
+      : 'No images added. '
 
   const details: string[] = []
-  if (extra > 0) details.push('Your bracket is full.')
+  if (extra > 0 && bracketFull) details.push('Your bracket is full.')
   if (heic > 0) details.push("HEIC isn't supported yet.")
 
   return {

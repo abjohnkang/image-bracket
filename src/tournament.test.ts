@@ -16,7 +16,7 @@ import {
 // --- helpers ---------------------------------------------------------------
 
 function contestant(id: string): Contestant {
-  return { id, url: `blob:${id}` }
+  return { id, url: `blob:${id}`, previewUrl: `blob:${id}-preview` }
 }
 
 function contestants(ids: string): Contestant[] {
@@ -229,15 +229,12 @@ describe('adding contestants', () => {
   })
 
   it('allows the same image twice when the ids differ', () => {
-    const sameImage = 'blob:same-photo'
-    const state = setupWith(8, [
-      { id: 'first', url: sameImage },
-      { id: 'second', url: sameImage },
-    ])
-    expect(state.contestants).toEqual([
-      { id: 'first', url: sameImage },
-      { id: 'second', url: sameImage },
-    ])
+    // Each upload gets its own URLs, even for the same file.
+    const uploads = [
+      { id: 'first', url: 'blob:photo-1', previewUrl: 'blob:preview-1' },
+      { id: 'second', url: 'blob:photo-2', previewUrl: 'blob:preview-2' },
+    ]
+    expect(setupWith(8, uploads).contestants).toEqual(uploads)
   })
 })
 
@@ -329,7 +326,11 @@ describe('starting a tournament', () => {
   })
 
   it('uses the uploaded contestant objects even if the order holds copies', () => {
-    const copies = ORDER.map((c) => ({ id: c.id, url: 'blob:something-else' }))
+    const copies = ORDER.map((c) => ({
+      id: c.id,
+      url: 'blob:something-else',
+      previewUrl: 'blob:something-else-preview',
+    }))
     const state = asTournament(
       apply(fullSetup(), { type: 'start', order: copies }),
     )
@@ -503,6 +504,45 @@ describe('quit', () => {
     expect(apply(state, { type: 'quit' })).toBe(state)
   })
 })
+
+describe('original and preview URLs', () => {
+  const urlsOf = (list: Contestant[]) =>
+    list.map((c) => `${c.url}|${c.previewUrl}`).sort()
+  const UPLOADED_URLS = urlsOf(UPLOADED)
+
+  it('survive Start → Quit → Start → Play Again unchanged', () => {
+    const afterQuit = apply(pick(started(), 'CHE'), { type: 'quit' })
+    expect(urlsOf(asSetup(afterQuit).contestants)).toEqual(UPLOADED_URLS)
+
+    const restarted = asTournament(
+      apply(afterQuit, { type: 'start', order: shuffle(UPLOADED, seededRandom(3)) }),
+    )
+    expect(urlsOf(restarted.contestants)).toEqual(UPLOADED_URLS)
+    expect(urlsOf(restarted.order)).toEqual(UPLOADED_URLS)
+
+    const replayed = asTournament(
+      apply(restarted, ...playToChampion(restarted), {
+        type: 'playAgain',
+        order: shuffle(UPLOADED, seededRandom(4)),
+      }),
+    )
+    expect(urlsOf(replayed.contestants)).toEqual(UPLOADED_URLS)
+    expect(urlsOf(replayed.order)).toEqual(UPLOADED_URLS)
+  })
+})
+
+// Picks the left contestant in every match until there is a champion.
+function playToChampion(state: AppState): AppAction[] {
+  const actions: AppAction[] = []
+  let current = state
+  for (;;) {
+    const { match } = bracket(current)
+    if (!match) return actions
+    const action: AppAction = { type: 'pickWinner', id: match[0].id }
+    actions.push(action)
+    current = tournamentReducer(current, action)
+  }
+}
 
 // --- 7. winner actions ------------------------------------------------------
 
