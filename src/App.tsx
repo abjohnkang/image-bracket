@@ -1,7 +1,14 @@
 import { useMemo, useReducer } from 'react'
+import MatchScreen from './screens/MatchScreen'
 import SetupScreen from './screens/SetupScreen'
 import SizeSelectScreen from './screens/SizeSelectScreen'
-import { initialState, shuffle, tournamentReducer } from './tournament'
+import WinnerScreen from './screens/WinnerScreen'
+import {
+  getBracket,
+  initialState,
+  shuffle,
+  tournamentReducer,
+} from './tournament'
 import { useObjectUrlCleanup } from './useObjectUrlCleanup'
 
 const NO_URLS: string[] = []
@@ -45,13 +52,31 @@ function App() {
         />
       )
 
-    // Temporary placeholder until the match screen exists.
-    case 'tournament':
+    case 'tournament': {
+      const bracket = getBracket(state.order, state.picks)
+      const undo = () => dispatch({ type: 'undo' })
+
+      if (bracket.champion) {
+        return <WinnerScreen champion={bracket.champion} onUndo={undo} />
+      }
+      if (!bracket.match) return null // unreachable: no champion means a match
+
+      const [left, right] = bracket.match
       return (
-        <p>
-          Tournament started: {state.size} images. Match screen coming next.
-        </p>
+        <MatchScreen
+          roundSize={bracket.round.length}
+          matchNumber={bracket.winners.length + 1}
+          matchCount={bracket.round.length / 2}
+          left={left}
+          right={right}
+          progress={state.picks.length / (state.size - 1)}
+          canUndo={state.picks.length > 0}
+          onPick={(id) => dispatch({ type: 'pickWinner', id })}
+          onUndo={undo}
+          onQuit={() => dispatch({ type: 'quit' })}
+        />
       )
+    }
   }
 }
 
