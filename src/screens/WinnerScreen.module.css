@@ -1,0 +1,305 @@
+/* One grid for every layout: media queries only move the areas, so the
+   heading and the actions exist once in the DOM. */
+.page {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'undo'
+    'title'
+    'image'
+    'actions';
+  height: 100svh; /* never scrolls */
+  overflow: hidden;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0
+    env(safe-area-inset-left, 0px);
+}
+
+/* A full, quieter progress line: the tournament is complete. */
+.progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: 2px;
+  background: var(--color-accent);
+  opacity: 0.7;
+}
+
+/* Same position as Undo in the match header. */
+.undoArea {
+  grid-area: undo;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: 18px 24px 0;
+}
+
+/* --- Title ------------------------------------------------------------------------ */
+
+.titleArea {
+  grid-area: title;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 24px 22px;
+  text-align: center;
+}
+
+.titleRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mark {
+  width: 30px;
+  height: 30px;
+  color: var(--color-accent);
+}
+
+.heading {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.heading:focus {
+  outline: none; /* focused by script only, to announce the result */
+}
+
+.context {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+/* --- Photo -------------------------------------------------------------------- */
+
+/* A bounded box; the photo hugs its own bounds inside it. */
+.imageArea {
+  grid-area: image;
+  container-type: size;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: min(1180px, 100% - 48px);
+  min-height: 0;
+}
+
+.photo {
+  visibility: hidden; /* until its proportions are known */
+  display: block;
+  aspect-ratio: var(--ratio, 1);
+  /* As large as fits in both directions, enlarging small images too. */
+  width: min(100cqw, 100cqh * var(--ratio, 1));
+  height: auto;
+  max-height: 100cqh;
+  object-fit: contain; /* safety net: never distort, even with rounding */
+  /* Drawn outside the image box: the edge and glow never cover pixels. */
+  box-shadow:
+    0 0 0 1px rgba(157, 107, 255, 0.45),
+    0 0 70px -6px rgba(157, 107, 255, 0.42),
+    0 0 160px -30px rgba(124, 77, 255, 0.35);
+}
+
+.ready {
+  visibility: visible;
+  animation:
+    photo-in 420ms var(--ease) both,
+    glow-in 1100ms ease-out both;
+}
+
+/* --- Actions -------------------------------------------------------------------- */
+
+.actions {
+  grid-area: actions;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 22px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.actionButton {
+  min-height: 48px;
+  padding-inline: 26px;
+}
+
+/* --- Entrance: plays once, whenever the screen is entered ------------------------ */
+
+.mark,
+.heading {
+  animation: rise-in 420ms var(--ease) 100ms both;
+}
+
+.context {
+  animation: rise-in 420ms var(--ease) 160ms both;
+}
+
+/* Opacity only, so the buttons work from the first frame. */
+.actionButton {
+  animation: fade-in 320ms ease-out 260ms both;
+}
+
+@keyframes photo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes glow-in {
+  from {
+    box-shadow:
+      0 0 0 1px rgba(157, 107, 255, 0),
+      0 0 70px -6px rgba(157, 107, 255, 0),
+      0 0 160px -30px rgba(124, 77, 255, 0);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ready,
+  .mark,
+  .heading,
+  .context,
+  .actionButton {
+    animation: none;
+  }
+}
+
+/* --- Portrait phones --------------------------------------------------------------- */
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .undoArea {
+    padding: 12px 8px 0;
+  }
+
+  .titleArea {
+    gap: 4px;
+    padding: 0 16px 14px;
+  }
+
+  .titleRow {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .mark {
+    width: 22px;
+    height: 22px;
+  }
+
+  .heading {
+    font-size: 1.6rem;
+  }
+
+  .context {
+    font-size: 0.82rem;
+  }
+
+  .imageArea {
+    width: calc(100% - 32px);
+  }
+
+  .actions {
+    gap: 10px;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .actionButton {
+    flex: 1;
+    padding-inline: 12px;
+  }
+}
+
+/* Too narrow for two comfortable buttons: stack them. */
+@media (max-width: 330px) {
+  .actions {
+    flex-direction: column;
+  }
+}
+
+/* --- Short / landscape: title and actions share a compact header row ------------- */
+
+@media (max-height: 480px) {
+  .page {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      'title . actions undo'
+      'image image image image';
+    align-items: center;
+  }
+
+  .undoArea {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 10px 14px 10px 4px;
+  }
+
+  .titleArea {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 0 10px 14px;
+    text-align: left;
+  }
+
+  .titleRow {
+    flex-direction: row;
+    align-self: center;
+    gap: 8px;
+  }
+
+  .mark {
+    width: 20px;
+    height: 20px;
+  }
+
+  .heading {
+    font-size: 1.35rem;
+  }
+
+  .context {
+    font-size: 0.8rem;
+  }
+
+  .actions {
+    gap: 8px;
+    padding: 0;
+  }
+
+  .actionButton {
+    min-height: 40px;
+    padding-inline: 14px;
+    font-size: 0.9rem;
+  }
+
+  .imageArea {
+    align-self: stretch; /* a size container has no height of its own */
+    width: calc(100% - 28px);
+    margin-bottom: 12px;
+  }
+}

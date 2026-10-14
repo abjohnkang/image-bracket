@@ -1,22 +1,59 @@
-import { useEffect, useEffectEvent } from 'react'
-import type { Contestant } from '../tournament'
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
+import BracketMark from '../components/BracketMark'
+import Button from '../components/Button'
+import ConfirmDialog from '../components/ConfirmDialog'
+import type { Contestant, TournamentSize } from '../tournament'
 import { UndoIcon } from './MatchScreen'
-import styles from './MatchScreen.module.css'
+import matchStyles from './MatchScreen.module.css'
+import styles from './WinnerScreen.module.css'
 
 interface WinnerScreenProps {
   champion: Contestant
+  size: TournamentSize
   onUndo: () => void
+  onPlayAgain: () => void
+  onNewTournament: () => void // only called after confirmation
 }
 
-// Temporary champion state until the full winner screen is designed.
-function WinnerScreen({ champion, onUndo }: WinnerScreenProps) {
+function WinnerScreen({
+  champion,
+  size,
+  onUndo,
+  onPlayAgain,
+  onNewTournament,
+}: WinnerScreenProps) {
+  const [isNewOpen, setIsNewOpen] = useState(false)
+  // The photo's proportions, known once it loads. Until then it stays hidden;
+  // if it never loads, the image area simply stays empty.
+  const [ratio, setRatio] = useState<number | null>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // Announce the result: focus the heading (not in Tab order, no ring).
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true })
+  }, [])
+
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (isNewOpen || event.defaultPrevented) return
+    const target = event.target
+    if (
+      target instanceof HTMLElement &&
+      (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+    ) {
+      return
+    }
     const undoShortcut =
       (event.ctrlKey || event.metaKey) &&
       !event.altKey &&
       !event.shiftKey &&
       event.key.toLowerCase() === 'z'
-    if (!undoShortcut || event.defaultPrevented) return
+    if (!undoShortcut) return
     event.preventDefault()
     if (!event.repeat) onUndo()
   })
@@ -28,30 +65,76 @@ function WinnerScreen({ champion, onUndo }: WinnerScreenProps) {
 
   return (
     <div className={styles.page}>
-      <div className={styles.progress} aria-hidden="true">
-        <div className={styles.progressFill} style={{ width: '100%' }} />
+      <div className={styles.progress} aria-hidden="true" />
+
+      {/* The heading comes first in the DOM: focus starts on it, so Tab then
+          reaches Undo, Play Again, New Tournament. Grid areas place them. */}
+      <div className={styles.titleArea}>
+        <div className={styles.titleRow}>
+          <BracketMark className={styles.mark} />
+          <h1 className={styles.heading} ref={headingRef} tabIndex={-1}>
+            Winner
+          </h1>
+        </div>
+        <p className={styles.context}>{size}-image bracket</p>
       </div>
 
-      <header className={styles.header}>
-        <h1 className={styles.title}>
-          <span className={styles.winnerLabel}>Winner</span>
-        </h1>
+      <div className={styles.undoArea}>
         <button
           type="button"
-          className={`${styles.action} ${styles.undo}`}
+          className={matchStyles.action}
           aria-label="Undo last pick"
           onClick={onUndo}
         >
           <UndoIcon />
-          <span className={styles.actionLabel}>Undo</span>
+          <span className={matchStyles.actionLabel}>Undo</span>
         </button>
-      </header>
+      </div>
 
-      <main className={`${styles.stage} ${styles.winnerStage}`}>
-        <div className={`${styles.frame} ${styles.winnerFrame}`}>
-          <img className={styles.image} src={champion.url} alt="Winning image" />
-        </div>
+      <main className={styles.imageArea}>
+        <img
+          key={champion.id}
+          className={`${styles.photo} ${ratio ? styles.ready : ''}`}
+          style={ratio ? ({ '--ratio': ratio } as CSSProperties) : undefined}
+          src={champion.url}
+          alt="Winning image"
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget
+            if (naturalWidth > 0 && naturalHeight > 0) {
+              setRatio(naturalWidth / naturalHeight)
+            }
+          }}
+        />
       </main>
+
+      <div className={styles.actions}>
+        <Button
+          variant="primary"
+          className={styles.actionButton}
+          onClick={onPlayAgain}
+        >
+          Play Again
+        </Button>
+        <Button
+          className={styles.actionButton}
+          onClick={() => setIsNewOpen(true)}
+        >
+          New Tournament
+        </Button>
+      </div>
+
+      <ConfirmDialog
+        open={isNewOpen}
+        title="Start a new tournament?"
+        body="Your uploaded images will be removed."
+        confirmLabel="Start new tournament"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setIsNewOpen(false)
+          onNewTournament()
+        }}
+        onCancel={() => setIsNewOpen(false)}
+      />
     </div>
   )
 }

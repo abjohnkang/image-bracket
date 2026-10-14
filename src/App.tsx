@@ -57,7 +57,17 @@ function App() {
       const undo = () => dispatch({ type: 'undo' })
 
       if (bracket.champion) {
-        return <WinnerScreen champion={bracket.champion} onUndo={undo} />
+        return (
+          <WinnerScreen
+            champion={bracket.champion}
+            size={state.size}
+            onUndo={undo}
+            onPlayAgain={() =>
+              dispatch({ type: 'playAgain', order: shuffle(state.contestants) })
+            }
+            onNewTournament={() => dispatch({ type: 'newTournament' })}
+          />
+        )
       }
       if (!bracket.match) return null // unreachable: no champion means a match
 
