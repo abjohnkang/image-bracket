@@ -1,9 +1,21 @@
-import { useReducer } from 'react'
+import { useMemo, useReducer } from 'react'
+import SetupScreen from './screens/SetupScreen'
 import SizeSelectScreen from './screens/SizeSelectScreen'
-import { initialState, tournamentReducer } from './tournament'
+import { initialState, shuffle, tournamentReducer } from './tournament'
+import { useObjectUrlCleanup } from './useObjectUrlCleanup'
+
+const NO_URLS: string[] = []
 
 function App() {
   const [state, dispatch] = useReducer(tournamentReducer, initialState)
+
+  // Every image URL the app still holds; anything that drops out is revoked.
+  const contestants = state.phase === 'chooseSize' ? null : state.contestants
+  const urls = useMemo(
+    () => (contestants ? contestants.map((c) => c.url) : NO_URLS),
+    [contestants],
+  )
+  useObjectUrlCleanup(urls)
 
   switch (state.phase) {
     case 'chooseSize':
@@ -13,12 +25,29 @@ function App() {
         />
       )
 
-    // Temporary placeholders until the setup and match screens exist.
     case 'setup':
-      return <p>Setup: {state.size} images. Upload screen coming next.</p>
+      return (
+        <SetupScreen
+          size={state.size}
+          contestants={state.contestants}
+          onAddContestants={(added) =>
+            dispatch({ type: 'addContestants', contestants: added })
+          }
+          onRemove={(id) => dispatch({ type: 'removeContestant', id })}
+          onStart={() =>
+            dispatch({ type: 'start', order: shuffle(state.contestants) })
+          }
+          onBackToSizes={() => dispatch({ type: 'backToSizes' })}
+        />
+      )
 
+    // Temporary placeholder until the match screen exists.
     case 'tournament':
-      return <p>Tournament in progress.</p>
+      return (
+        <p>
+          Tournament started: {state.size} images. Match screen coming next.
+        </p>
+      )
   }
 }
 

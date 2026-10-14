@@ -25,6 +25,7 @@ export type AppAction =
   | { type: 'setSize'; size: TournamentSize }
   | { type: 'addContestants'; contestants: Contestant[] }
   | { type: 'removeContestant'; id: string }
+  | { type: 'backToSizes' }
   | { type: 'start'; order: Contestant[] } // already shuffled
   | { type: 'pickWinner'; id: string }
   | { type: 'undo' }
@@ -144,6 +145,12 @@ export function tournamentReducer(
         ...state,
         contestants: state.contestants.filter((c) => c.id !== action.id),
       }
+    }
+
+    case 'backToSizes': {
+      // Discards uploads; the UI confirms first when there are any.
+      if (state.phase !== 'setup') return state
+      return initialState
     }
 
     case 'start': {

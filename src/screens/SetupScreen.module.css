@@ -1,0 +1,533 @@
+.page {
+  /* Tile sizing per bracket size; see the [data-size] rules below. */
+  --tile-min: 140px;
+  --tile-max-cols: 6;
+  --tile-gap: 12px;
+  --tile-radius: 12px;
+  --remove-size: 28px;
+  --remove-hit: 40px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+.page[data-size='4'] {
+  --tile-min: 200px;
+  --tile-max-cols: 4;
+  --tile-gap: 16px;
+  --tile-radius: 16px;
+}
+
+.page[data-size='8'] {
+  --tile-min: 180px;
+  --tile-max-cols: 4;
+  --tile-gap: 14px;
+  --tile-radius: 14px;
+}
+
+.page[data-size='16'] {
+  --tile-min: 140px;
+  --tile-max-cols: 6;
+}
+
+.page[data-size='32'] {
+  --tile-min: 120px;
+  --tile-max-cols: 8;
+  --tile-gap: 10px;
+  --tile-radius: 10px;
+}
+
+.page[data-size='64'] {
+  --tile-min: 104px;
+  --tile-max-cols: 8;
+  --tile-gap: 8px;
+  --tile-radius: 8px;
+  --remove-size: 24px;
+}
+
+.page[data-size='128'] {
+  --tile-min: 92px;
+  --tile-max-cols: 10;
+  --tile-gap: 8px;
+  --tile-radius: 8px;
+  --remove-size: 24px;
+}
+
+.header,
+.main,
+.barContent {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+/* --- Header ---------------------------------------------------------------- */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--color-accent);
+}
+
+.sizeInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.changeSize {
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 4px;
+  transition: text-decoration-color 160ms var(--ease);
+}
+
+.changeSize:hover {
+  text-decoration-color: var(--color-accent);
+}
+
+.changeSize:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* --- Main ------------------------------------------------------------------ */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-block: 12px 32px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+/* --- Empty state ------------------------------------------------------------ */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: clamp(280px, 50vh, 440px);
+  padding: 32px 20px;
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: 20px;
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.dropzoneIcon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-accent);
+}
+
+.dropzoneTitle {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.dropzoneHint {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+/* --- Grid ------------------------------------------------------------------ */
+
+.grid {
+  display: grid;
+  /* auto-fill, but never more than --tile-max-cols columns */
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(
+      max(
+        var(--tile-min),
+        (100% - (var(--tile-max-cols) - 1) * var(--tile-gap)) /
+          var(--tile-max-cols)
+      ),
+      1fr
+    )
+  );
+  gap: var(--tile-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 1;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--tile-radius);
+  background: var(--color-surface);
+  animation: tile-in 220ms var(--ease);
+}
+
+.tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* compact preview; matches use contain */
+}
+
+/* The button is a larger invisible hit area; the circle is what shows. */
+.remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: var(--remove-hit);
+  height: var(--remove-hit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.removeCircle {
+  display: grid;
+  place-items: center;
+  width: var(--remove-size);
+  height: var(--remove-size);
+  border-radius: 999px;
+  background: rgba(11, 10, 16, 0.68);
+  transition:
+    background-color 160ms var(--ease),
+    color 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+
+.removeCircle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.remove:hover .removeCircle,
+.remove:focus-visible .removeCircle {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+.remove:focus-visible {
+  outline: none;
+}
+
+.remove:focus-visible .removeCircle {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.remove:active .removeCircle {
+  transform: scale(0.92);
+}
+
+@keyframes tile-in {
+  from {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+}
+
+/* --- Sticky dock ------------------------------------------------------------ */
+
+.dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.noticeRegion {
+  display: flex;
+  justify-content: center;
+  padding-inline: 16px;
+  pointer-events: none; /* only the notice itself takes clicks */
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 640px;
+  margin-bottom: 12px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 14px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  font-size: 0.9rem;
+  pointer-events: auto;
+}
+
+.noticeIcon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--color-accent);
+}
+
+.noticeText {
+  flex: 1;
+  min-width: 0;
+}
+
+.noticeText p {
+  margin: 0;
+}
+
+.noticeDetail {
+  color: var(--color-muted);
+}
+
+.noticeClose {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.noticeClose:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.noticeClose:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.noticeClose svg {
+  width: 12px;
+  height: 12px;
+}
+
+.bar {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.barContent {
+  padding-top: 12px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Sits inside the content width, aligned with the count and buttons. */
+.progress {
+  height: 3px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition: width 280ms var(--ease);
+}
+
+.barRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.status {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+}
+
+.count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.remaining {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ready svg {
+  width: 14px;
+  height: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* --- Drag overlay ----------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  padding: 16px;
+  background: rgba(11, 10, 16, 0.86);
+  pointer-events: none;
+}
+
+.overlayFrame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 2px dashed var(--color-accent);
+  border-radius: 24px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.overlayIcon {
+  width: 56px;
+  height: 56px;
+  color: var(--color-accent);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Mobile ----------------------------------------------------------------- */
+
+@media (max-width: 560px) {
+  .page {
+    --remove-hit: 44px;
+  }
+
+  .page[data-size='4'],
+  .page[data-size='8'] {
+    --tile-min: 130px;
+    --tile-gap: 10px;
+    --tile-radius: 12px;
+  }
+
+  .page[data-size='16'] {
+    --tile-min: 96px;
+    --tile-gap: 8px;
+    --tile-radius: 10px;
+  }
+
+  .page[data-size='32'],
+  .page[data-size='64'],
+  .page[data-size='128'] {
+    --tile-min: 70px;
+    --tile-gap: 6px;
+    --tile-radius: 6px;
+    --remove-size: 24px;
+  }
+
+  .header,
+  .main,
+  .barContent {
+    padding-inline: 16px;
+  }
+
+  .header {
+    padding-block: 16px;
+  }
+
+  .brandName {
+    display: none;
+  }
+
+  .barRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .actions > * {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    animation: none;
+  }
+
+  .removeCircle,
+  .progressFill,
+  .changeSize {
+    transition: none;
+  }
+
+  .remove:active .removeCircle {
+    transform: none;
+  }
+}

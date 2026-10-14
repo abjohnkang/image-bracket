@@ -152,6 +152,7 @@ describe('actions in the wrong phase do nothing', () => {
   const setupOnly: AppAction[] = [
     { type: 'addContestants', contestants: contestants('A') },
     { type: 'removeContestant', id: 'A' },
+    { type: 'backToSizes' },
     { type: 'start', order: ORDER },
   ]
 
@@ -261,6 +262,39 @@ describe('removing contestants', () => {
   it('does nothing for an unknown id', () => {
     const state = setupWith(8, contestants('ABCD'))
     expect(apply(state, { type: 'removeContestant', id: 'Z' })).toBe(state)
+  })
+})
+
+describe('going back to size selection', () => {
+  it('returns to the size screen and discards uploads', () => {
+    const state = apply(setupWith(8, contestants('ABC')), {
+      type: 'backToSizes',
+    })
+    expect(state).toEqual({ phase: 'chooseSize' })
+  })
+
+  it('returns immediately from an empty setup', () => {
+    const state = apply(setupWith(8, []), { type: 'backToSizes' })
+    expect(state).toEqual({ phase: 'chooseSize' })
+  })
+
+  it('opens an empty setup when a size is chosen again', () => {
+    const state = apply(
+      fullSetup(),
+      { type: 'backToSizes' },
+      { type: 'setSize', size: 8 },
+    )
+    expect(state).toEqual({ phase: 'setup', size: 8, contestants: [] })
+  })
+
+  it('does not bring back contestants after quitting a tournament', () => {
+    const state = apply(
+      pick(started(), 'CHE'),
+      { type: 'quit' },
+      { type: 'backToSizes' },
+      { type: 'setSize', size: 8 },
+    )
+    expect(asSetup(state).contestants).toEqual([])
   })
 })
 

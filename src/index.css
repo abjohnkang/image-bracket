@@ -3,10 +3,15 @@
   --color-surface: #14121b;
   --color-surface-raised: #1a1724;
   --color-border: #262234;
+  --color-border-strong: #3a3450;
   --color-text: #f3f1f8;
   --color-muted: #8f8aa1;
   --color-accent: #9d6bff;
   --color-accent-glow: rgba(157, 107, 255, 0.32);
+  --color-accent-strong: #7c4dff; /* button fill; white text passes contrast */
+  --color-accent-strong-glow: rgba(124, 77, 255, 0.5);
+  --color-danger: #ff7a93;
+  --color-danger-bg: rgba(255, 92, 122, 0.14);
 
   --font-sans: 'Space Grotesk Variable', system-ui, 'Segoe UI', Roboto,
     sans-serif;

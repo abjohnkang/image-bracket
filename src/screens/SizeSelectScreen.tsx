@@ -1,3 +1,4 @@
+import BracketMark from '../components/BracketMark'
 import { TOURNAMENT_SIZES, type TournamentSize } from '../tournament'
 import styles from './SizeSelectScreen.module.css'
 
@@ -10,21 +11,7 @@ function SizeSelectScreen({ onSelect }: SizeSelectScreenProps) {
     <div className={styles.page}>
       <main className={styles.main}>
         <header className={styles.header}>
-          {/* Four entrants narrowing to one winner. */}
-          <svg
-            className={styles.mark}
-            viewBox="0 0 36 36"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M4 7h8v8H4M4 21h8v8H4M12 11h8v14h-8M20 18h12"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <BracketMark className={styles.mark} />
           <h1 className={styles.title}>Image Bracket</h1>
           <p className={styles.tagline}>
             Upload images. Pick one of two. Crown a winner.
