@@ -1,0 +1,80 @@
+import { TOURNAMENT_SIZES, type TournamentSize } from '../tournament'
+import styles from './SizeSelectScreen.module.css'
+
+interface SizeSelectScreenProps {
+  onSelect: (size: TournamentSize) => void
+}
+
+function SizeSelectScreen({ onSelect }: SizeSelectScreenProps) {
+  return (
+    <div className={styles.page}>
+      <main className={styles.main}>
+        <header className={styles.header}>
+          {/* Four entrants narrowing to one winner. */}
+          <svg
+            className={styles.mark}
+            viewBox="0 0 36 36"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M4 7h8v8H4M4 21h8v8H4M12 11h8v14h-8M20 18h12"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <h1 className={styles.title}>Image Bracket</h1>
+          <p className={styles.tagline}>
+            Upload images. Pick one of two. Crown a winner.
+          </p>
+        </header>
+
+        <section className={styles.picker} aria-labelledby="size-prompt">
+          <h2 className={styles.prompt} id="size-prompt">
+            How many contenders?
+          </h2>
+          <ul className={styles.sizes}>
+            {TOURNAMENT_SIZES.map((size) => (
+              <li key={size}>
+                <button
+                  type="button"
+                  className={styles.size}
+                  onClick={() => onSelect(size)}
+                >
+                  <span className={styles.sizeNumber}>{size}</span>
+                  <span className={styles.sizeCaption}>
+                    {size - 1} matches
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+
+      <footer className={styles.footer}>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect
+            x="3"
+            y="7"
+            width="10"
+            height="7"
+            rx="1.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+        </svg>
+        Your images never leave your device.
+      </footer>
+    </div>
+  )
+}
+
+export default SizeSelectScreen

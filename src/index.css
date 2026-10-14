@@ -1,19 +1,36 @@
+:root {
+  --color-bg: #0b0a10;
+  --color-surface: #14121b;
+  --color-surface-raised: #1a1724;
+  --color-border: #262234;
+  --color-text: #f3f1f8;
+  --color-muted: #8f8aa1;
+  --color-accent: #9d6bff;
+  --color-accent-glow: rgba(157, 107, 255, 0.32);
+
+  --font-sans: 'Space Grotesk Variable', system-ui, 'Segoe UI', Roboto,
+    sans-serif;
+  --radius: 16px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-:root {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-  color-scheme: light dark;
-  -webkit-font-smoothing: antialiased;
-}
-
 body {
   margin: 0;
   min-height: 100svh;
+  background: var(--color-bg);
 }
 
 img {
