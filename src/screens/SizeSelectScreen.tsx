@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import BracketMark from '../components/BracketMark'
 import { TOURNAMENT_SIZES, type TournamentSize } from '../tournament'
+import { useFocusOnEnter } from '../useFocusOnEnter'
 import styles from './SizeSelectScreen.module.css'
 
 interface SizeSelectScreenProps {
@@ -7,12 +9,17 @@ interface SizeSelectScreenProps {
 }
 
 function SizeSelectScreen({ onSelect }: SizeSelectScreenProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useFocusOnEnter(headingRef)
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
         <header className={styles.header}>
           <BracketMark className={styles.mark} />
-          <h1 className={styles.title}>Image Bracket</h1>
+          <h1 className={styles.title} ref={headingRef} tabIndex={-1}>
+            Image Bracket
+          </h1>
           <p className={styles.tagline}>
             Upload images. Pick one of two. Crown a winner.
           </p>

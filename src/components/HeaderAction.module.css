@@ -1,0 +1,53 @@
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition:
+    color 140ms var(--ease),
+    background-color 140ms var(--ease);
+}
+
+.action svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+/* Hover only where hover exists, so it never sticks after a tap. */
+@media (hover: hover) {
+  .action:hover:not([aria-disabled='true']) {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+}
+
+.action[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .label {
+    display: none; /* icon-only; the button keeps its aria-label */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action {
+    transition: none;
+  }
+}

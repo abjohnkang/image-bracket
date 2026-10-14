@@ -48,6 +48,10 @@
   text-wrap: balance;
 }
 
+.title:focus {
+  outline: none; /* focused by script only, to announce the screen */
+}
+
 .tagline {
   margin: 0;
   color: var(--color-muted);

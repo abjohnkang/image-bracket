@@ -8,9 +8,11 @@ import {
 import BracketMark from '../components/BracketMark'
 import Button from '../components/Button'
 import ConfirmDialog from '../components/ConfirmDialog'
+import HeaderAction from '../components/HeaderAction'
+import { UndoIcon } from '../components/icons'
+import { isEditableTarget, isUndoShortcut } from '../keyboard'
 import type { Contestant, TournamentSize } from '../tournament'
-import { UndoIcon } from './MatchScreen'
-import matchStyles from './MatchScreen.module.css'
+import { useFocusOnEnter } from '../useFocusOnEnter'
 import styles from './WinnerScreen.module.css'
 
 interface WinnerScreenProps {
@@ -35,25 +37,11 @@ function WinnerScreen({
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   // Announce the result: focus the heading (not in Tab order, no ring).
-  useEffect(() => {
-    headingRef.current?.focus({ preventScroll: true })
-  }, [])
+  useFocusOnEnter(headingRef)
 
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (isNewOpen || event.defaultPrevented) return
-    const target = event.target
-    if (
-      target instanceof HTMLElement &&
-      (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-    ) {
-      return
-    }
-    const undoShortcut =
-      (event.ctrlKey || event.metaKey) &&
-      !event.altKey &&
-      !event.shiftKey &&
-      event.key.toLowerCase() === 'z'
-    if (!undoShortcut) return
+    if (isEditableTarget(event.target) || !isUndoShortcut(event)) return
     event.preventDefault()
     if (!event.repeat) onUndo()
   })
@@ -80,15 +68,12 @@ function WinnerScreen({
       </div>
 
       <div className={styles.undoArea}>
-        <button
-          type="button"
-          className={matchStyles.action}
-          aria-label="Undo last pick"
+        <HeaderAction
+          icon={<UndoIcon />}
+          label="Undo"
+          ariaLabel="Undo last pick"
           onClick={onUndo}
-        >
-          <UndoIcon />
-          <span className={matchStyles.actionLabel}>Undo</span>
-        </button>
+        />
       </div>
 
       <main className={styles.imageArea}>

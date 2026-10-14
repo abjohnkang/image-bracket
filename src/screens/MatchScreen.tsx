@@ -1,6 +1,10 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import HeaderAction from '../components/HeaderAction'
+import { CloseIcon, UndoIcon } from '../components/icons'
+import { isEditableTarget, isUndoShortcut } from '../keyboard'
 import { getRoundName, type Contestant } from '../tournament'
+import { useFocusOnEnter } from '../useFocusOnEnter'
 import { useMediaQuery } from '../useMediaQuery'
 import styles from './MatchScreen.module.css'
 
@@ -55,6 +59,10 @@ function MatchScreen({
   // so its keyup (e.g. Space on a focused frame) can't also pick.
   const releaseOnKeyUpRef = useRef<string | null>(null)
   const timersRef = useRef(new Set<number>())
+  // Entering the tournament announces the screen through its heading; the
+  // image choices are never focused automatically, and arrow keys work anyway.
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useFocusOnEnter(headingRef)
 
   const isStacked = useMediaQuery(STACKED_QUERY)
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
@@ -142,7 +150,7 @@ function MatchScreen({
   // --- keyboard ---------------------------------------------------------------
 
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    if (isQuitOpen || event.defaultPrevented || isEditable(event.target)) {
+    if (isQuitOpen || event.defaultPrevented || isEditableTarget(event.target)) {
       return
     }
     const undoShortcut = isUndoShortcut(event)
@@ -210,31 +218,27 @@ function MatchScreen({
       </div>
 
       <header className={styles.header}>
-        <button
-          type="button"
-          className={`${styles.action} ${styles.quit}`}
-          aria-label="Quit tournament"
+        <HeaderAction
+          className={styles.quit}
+          icon={<CloseIcon />}
+          label="Quit"
+          ariaLabel="Quit tournament"
           onClick={openQuit}
-        >
-          <QuitIcon />
-          <span className={styles.actionLabel}>Quit</span>
-        </button>
-        <h1 className={styles.title}>
-          <span className={styles.round}>{roundName}</span>
+        />
+        <h1 className={styles.title} ref={headingRef} tabIndex={-1}>
+          <span className={styles.round}>{roundName}</span>{' '}
           <span className={styles.match}>
             Match {matchNumber} of {matchCount}
           </span>
         </h1>
-        <button
-          type="button"
-          className={`${styles.action} ${styles.undo}`}
-          aria-label="Undo last pick"
-          aria-disabled={!canUndo}
+        <HeaderAction
+          className={styles.undo}
+          icon={<UndoIcon />}
+          label="Undo"
+          ariaLabel="Undo last pick"
+          disabled={!canUndo}
           onClick={undo}
-        >
-          <UndoIcon />
-          <span className={styles.actionLabel}>Undo</span>
-        </button>
+        />
       </header>
 
       <main className={styles.stage}>
@@ -299,56 +303,10 @@ function MatchScreen({
 
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta'])
 
-function isUndoShortcut(event: KeyboardEvent): boolean {
-  return (
-    (event.ctrlKey || event.metaKey) &&
-    !event.altKey &&
-    !event.shiftKey &&
-    event.key.toLowerCase() === 'z'
-  )
-}
-
-function isEditable(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable ||
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT')
-  )
-}
-
 function keyToSide(key: string, stacked: boolean): Side | null {
   if (key === 'ArrowLeft' || (stacked && key === 'ArrowUp')) return 0
   if (key === 'ArrowRight' || (stacked && key === 'ArrowDown')) return 1
   return null
-}
-
-export function QuitIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M4 4l8 8M12 4l-8 8"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-export function UndoIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M5.5 3.5L2.5 6.5l3 3M3 6.5h6.5a4 4 0 010 8H7"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }
 
 export default MatchScreen

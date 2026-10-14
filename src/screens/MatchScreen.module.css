@@ -1,14 +1,9 @@
-/* MatchScreen styles. WinnerScreen reuses .action/.actionLabel so its Undo
-   looks exactly like the one during matches. */
-
 .page {
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100svh; /* exactly one screen: a match never scrolls */
   overflow: hidden;
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
-    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
 
 /* --- Overall progress ------------------------------------------------------- */
@@ -52,6 +47,10 @@
   text-align: center;
 }
 
+.title:focus {
+  outline: none; /* focused by script only, to announce the screen */
+}
+
 .round {
   color: var(--color-muted);
   font-size: 0.75rem;
@@ -67,45 +66,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 10px;
-  background: none;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition:
-    color 140ms var(--ease),
-    background-color 140ms var(--ease);
-}
-
-.action svg {
-  width: 15px;
-  height: 15px;
-  flex: none;
-}
-
-.action:hover:not([aria-disabled='true']) {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.action[aria-disabled='true'] {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.action:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
+/* Placement of the shared HeaderAction buttons. */
 .quit {
   grid-column: 1;
   justify-self: start;
@@ -178,22 +139,31 @@
   }
 }
 
-.frame:hover,
 .frame:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 5px;
   box-shadow:
     0 0 0 2px var(--color-accent),
     0 0 48px -10px var(--color-accent-glow);
 }
 
-.frame:focus-visible {
-  outline: 2px solid var(--color-text);
-  outline-offset: 5px;
-}
-
 /* The other contestant dims only slightly. */
-.stage:has(.frame:hover) .frame:not(:hover) .image,
 .stage:has(.frame:focus-visible) .frame:not(:focus-visible) .image {
   filter: brightness(0.9);
+}
+
+/* Hover only where hover exists: on touch screens :hover sticks to the last
+   tapped frame, which would make the next pair look pre-selected. */
+@media (hover: hover) {
+  .frame:hover {
+    box-shadow:
+      0 0 0 2px var(--color-accent),
+      0 0 48px -10px var(--color-accent-glow);
+  }
+
+  .stage:has(.frame:hover) .frame:not(:hover) .image {
+    filter: brightness(0.9);
+  }
 }
 
 .frame:active {
@@ -317,10 +287,6 @@
     font-size: 1rem;
   }
 
-  .actionLabel {
-    display: none; /* icon-only; the buttons keep their aria-labels */
-  }
-
   .stage {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 1fr;
@@ -371,8 +337,7 @@
 @media (prefers-reduced-motion: reduce) {
   .progressFill,
   .frame,
-  .image,
-  .action {
+  .image {
     transition: none;
   }
 

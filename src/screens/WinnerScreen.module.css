@@ -12,8 +12,6 @@
     'actions';
   height: 100svh; /* never scrolls */
   overflow: hidden;
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0
-    env(safe-area-inset-left, 0px);
 }
 
 /* A full, quieter progress line: the tournament is complete. */
@@ -125,7 +123,7 @@
   display: flex;
   justify-content: center;
   gap: 12px;
-  padding: 22px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: 22px 24px 24px;
 }
 
 .actionButton {
@@ -224,7 +222,7 @@
 
   .actions {
     gap: 10px;
-    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 14px 16px 16px;
   }
 
   .actionButton {

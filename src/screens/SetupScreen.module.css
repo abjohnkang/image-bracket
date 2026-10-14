@@ -137,6 +137,10 @@
   letter-spacing: -0.035em;
 }
 
+.title:focus {
+  outline: none; /* focused by script only, to announce the screen */
+}
+
 /* --- Empty state ------------------------------------------------------------ */
 
 .dropzone {
@@ -164,6 +168,22 @@
   font-size: 1.4rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+/* Drag and drop isn't a realistic main interaction without a hovering
+   pointer (phones, tablets), so lead with choosing instead. */
+.touchCopy {
+  display: none;
+}
+
+@media (hover: none) {
+  .pointerCopy {
+    display: none;
+  }
+
+  .touchCopy {
+    display: inline;
+  }
 }
 
 .dropzoneHint {
@@ -240,8 +260,8 @@
 }
 
 .removeCircle svg {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
 }
 
 .remove:hover .removeCircle,
@@ -346,8 +366,8 @@
 }
 
 .noticeClose svg {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
 }
 
 .bar {
@@ -357,7 +377,7 @@
 
 .barContent {
   padding-top: 12px;
-  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: 14px;
 }
 
 /* Sits inside the content width, aligned with the count and buttons. */

@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import BracketMark from '../components/BracketMark'
 import Button from '../components/Button'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { CloseIcon } from '../components/icons'
 import { createContestantId } from '../contestantId'
 import { prepareImage, releasePreparedImage } from '../preview'
 import type { Contestant, TournamentSize } from '../tournament'
@@ -12,6 +13,7 @@ import {
   sortFiles,
   type UploadResult,
 } from '../upload'
+import { useFocusOnEnter } from '../useFocusOnEnter'
 import styles from './SetupScreen.module.css'
 
 interface SetupScreenProps {
@@ -41,6 +43,9 @@ function SetupScreen({
   } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useFocusOnEnter(headingRef)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const browseRef = useRef<HTMLButtonElement>(null)
@@ -122,6 +127,26 @@ function SetupScreen({
     target?.focus()
   }, [contestants])
 
+  // If the focused control goes away within this screen (Browse files when
+  // the first image arrives, Add images when disabled or hidden), focus would
+  // fall back to the page. Put it on the heading instead; never move focus
+  // that is still somewhere valid.
+  const lastFocusedRef = useRef<Element | null>(null)
+  useEffect(() => {
+    const remember = (event: FocusEvent) => {
+      lastFocusedRef.current = event.target as Element
+    }
+    document.addEventListener('focusin', remember)
+    return () => document.removeEventListener('focusin', remember)
+  }, [])
+  useEffect(() => {
+    const last = lastFocusedRef.current
+    if (!last || document.activeElement !== document.body) return
+    const lost =
+      !last.isConnected || (last instanceof HTMLButtonElement && last.disabled)
+    if (lost) headingRef.current?.focus({ preventScroll: true })
+  }, [count, isFull, isPreparing])
+
   // The whole window accepts file drops while this screen is shown.
   const onDropFiles = useEffectEvent((files: File[]) => {
     if (!isConfirmOpen && !isPreparing) void handleFiles(files)
@@ -191,13 +216,18 @@ function SetupScreen({
       </header>
 
       <main className={styles.main}>
-        <h1 className={styles.title}>Add your images</h1>
+        <h1 className={styles.title} ref={headingRef} tabIndex={-1}>
+          Add your images
+        </h1>
 
         {count === 0 ? (
           <section className={styles.dropzone} aria-labelledby="dropzone-title">
             <ImageIcon className={styles.dropzoneIcon} />
+            {/* Only one of these is displayed (and read), depending on
+                whether the device has a pointer that can hover/drag. */}
             <h2 className={styles.dropzoneTitle} id="dropzone-title">
-              Drop images here
+              <span className={styles.pointerCopy}>Drop images here</span>
+              <span className={styles.touchCopy}>Choose images</span>
             </h2>
             <Button
               ref={browseRef}
@@ -227,7 +257,7 @@ function SetupScreen({
                   onClick={() => handleRemove(index, contestant.id)}
                 >
                   <span className={styles.removeCircle}>
-                    <CrossIcon />
+                    <CloseIcon />
                   </span>
                 </button>
               </li>
@@ -253,7 +283,7 @@ function SetupScreen({
                 aria-label="Dismiss notice"
                 onClick={() => setUpload(null)}
               >
-                <CrossIcon />
+                <CloseIcon />
               </button>
             </div>
           )}
@@ -307,8 +337,13 @@ function SetupScreen({
         </div>
       </div>
 
+      {/* Constant while a batch runs (no announcement per image); the count
+          is announced once it finishes. Skipped files are announced by the
+          notice above (role="status"). */}
       <span className={styles.visuallyHidden} aria-live="polite">
-        {count} of {size} images added
+        {preparing
+          ? `Preparing ${preparing.total} ${preparing.total === 1 ? 'image' : 'images'}…`
+          : `${count} of ${size} images added`}
       </span>
 
       <input
@@ -380,14 +415,6 @@ function InfoIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 18 18" fill="none" aria-hidden="true">
       <circle cx="9" cy="9" r="7.25" stroke="currentColor" strokeWidth="1.5" />
       <path d="M9 8v4.5M9 5.5v.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function CrossIcon() {
-  return (
-    <svg viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
